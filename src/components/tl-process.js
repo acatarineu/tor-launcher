@@ -272,7 +272,6 @@ TorProcessService.prototype =
   contractID: this.kContractID,
   classDescription: this.kServiceName,
   classID: this.kClassID,
-  implementationLanguage: Ci.nsIProgrammingLanguage.JAVASCRIPT,
   flags: Ci.nsIClassInfo.DOM_OBJECT,
 
   // nsIFactory implementation.
@@ -979,7 +978,7 @@ TorProcessService.prototype =
       let stream = Cc["@mozilla.org/network/safe-file-output-stream;1"]
                      .createInstance(Ci.nsIFileOutputStream);
       stream.init(aFile, 0x02 | 0x08 | 0x20, /* WRONLY CREATE TRUNCATE */
-                  0600, 0);
+                  0o600, 0);
       stream.write(data, data.length);
       stream.QueryInterface(Ci.nsISafeOutputStream).finish();
     }

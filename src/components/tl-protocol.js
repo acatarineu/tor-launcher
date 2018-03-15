@@ -256,7 +256,6 @@ TorProtocolService.prototype =
   contractID: this.kContractID,
   classDescription: this.kServiceName,
   classID: this.kClassID,
-  implementationLanguage: Ci.nsIProgrammingLanguage.JAVASCRIPT,
   flags: Ci.nsIClassInfo.DOM_OBJECT,
 
   // nsIFactory implementation.

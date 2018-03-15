@@ -658,9 +658,9 @@ let TorLauncherUtil =  // Public
           try
           {
             if ("tordatadir" == aTorFileType)
-              torFile.create(torFile.DIRECTORY_TYPE, 0700);
+              torFile.create(torFile.DIRECTORY_TYPE, 0o700);
             else
-              torFile.create(torFile.NORMAL_FILE_TYPE, 0600);
+              torFile.create(torFile.NORMAL_FILE_TYPE, 0o600);
           }
           catch (e)
           {
@@ -883,7 +883,7 @@ let TLUtilInternal =  // Private
       let d = Cc['@mozilla.org/file/local;1'].createInstance(Ci.nsIFile);
       d.initWithPath(aBasePath);
       d.append("Tor");
-      d.createUnique(Ci.nsIFile.DIRECTORY_TYPE, 0700);
+      d.createUnique(Ci.nsIFile.DIRECTORY_TYPE, 0o700);
       return d;
     }
     catch (e)
