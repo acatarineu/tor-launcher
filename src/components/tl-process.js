@@ -79,7 +79,7 @@ TorProcessService.prototype =
   lockFactory: function(aDoLock) {},
 
   // nsIObserver implementation.
-  observe: function(aSubject, aTopic, aParam)
+  observe: async function(aSubject, aTopic, aParam)
   {
     const kOpenNetworkSettingsTopic = "TorOpenNetworkSettings";
     const kUserQuitTopic = "TorUserRequestedQuit";
@@ -207,15 +207,15 @@ TorProcessService.prototype =
     {
       if (aSubject == this.mControlConnTimer)
       {
-        var haveConnection = this.mProtocolSvc.TorHaveControlConnection();
+        var haveConnection = await this.mProtocolSvc.TorHaveControlConnection();
         if (haveConnection)
         {
           this.mDidConnectToTorControlPort = true;
           this.mControlConnTimer = null;
           this.mTorProcessStatus = this.kStatusRunning;
-          this.mProtocolSvc.TorStartEventMonitor();
+          await this.mProtocolSvc.TorStartEventMonitor();
 
-          this.mProtocolSvc.TorRetrieveBootstrapStatus();
+          await this.mProtocolSvc.TorRetrieveBootstrapStatus();
 
           if (this._defaultBridgesStatus == this.kDefaultBridgesStatus_InUse)
           {
@@ -657,7 +657,7 @@ TorProcessService.prototype =
     return this.kDefaultBridgesStatus_InUse;
   },
 
-  _configureDefaultBridges: function()
+  _configureDefaultBridges: async function()
   {
     var settings = {};
     var bridgeArray = TorLauncherUtil.defaultBridges;
@@ -665,7 +665,7 @@ TorProcessService.prototype =
     settings["UseBridges"] = useBridges;
     settings["Bridge"] = bridgeArray;
     var errObj = {};
-    var didSucceed = this.mProtocolSvc.TorSetConfWithReply(settings, errObj);
+    var didSucceed = await this.mProtocolSvc.TorSetConfWithReply(settings, errObj);
 
     // If the network settings wizard was not opened at startup, enable the
     // network so that bootstrapping will proceed with the default bridges.
@@ -673,7 +673,7 @@ TorProcessService.prototype =
     {
       settings = {};
       settings["DisableNetwork"] = false;
-      if (!this.mProtocolSvc.TorSetConfWithReply(settings,
+      if (!await this.mProtocolSvc.TorSetConfWithReply(settings,
                                                  (didSucceed) ? errObj : null))
       {
         didSucceed = false;
@@ -682,7 +682,7 @@ TorProcessService.prototype =
 
     if (didSucceed)
     {
-      this.mProtocolSvc.TorSendCommand("SAVECONF");
+      await this.mProtocolSvc.TorSendCommand("SAVECONF");
     }
     else
     {

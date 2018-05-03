@@ -462,22 +462,22 @@ function getWizard()
 }
 
 
-function onWizardFirstPanelConnect()
+async function onWizardFirstPanelConnect()
 {
   // If the user configured bridge or proxy settings, prompt before
   // discarding their data.
   if (isBridgeConfigured() || isProxyConfigured())
     showPanel(kWizardDiscardSettingsPageID);
   else
-    removeSettingsAndConnect()
+    await removeSettingsAndConnect()
 }
 
 
-function removeSettingsAndConnect()
+async function removeSettingsAndConnect()
 {
-  applySettings(true);  // Use default settings.
+  await applySettings(true);  // Use default settings.
   if (!gTorProcessService.TorIsBootstrapDone)
-    readTorSettings();  // Ensure UI matches the settings that were used.
+    await readTorSettings();  // Ensure UI matches the settings that were used.
 }
 
 
@@ -520,10 +520,10 @@ function onBridgeTypeRadioChange()
 }
 
 
-function onOpenBridgeDBRequestPrompt()
+async function onOpenBridgeDBRequestPrompt()
 {
   // Obtain the meek client path and args from the tor configuration.
-  let reply = gProtocolSvc.TorGetConf("ClientTransportPlugin");
+  let reply = await gProtocolSvc.TorGetConf("ClientTransportPlugin");
   if (!gProtocolSvc.TorCommandSucceeded(reply))
     return;
 
@@ -756,7 +756,7 @@ function resetProgressNavButtons()
 
 
 var gObserver = {
-  observe: function(aSubject, aTopic, aData)
+  observe: async function(aSubject, aTopic, aData)
   {
     if ((kTorBootstrapErrorTopic == aTopic) ||
          (kTorLogHasWarnOrErrTopic == aTopic))
@@ -764,7 +764,7 @@ var gObserver = {
       showCopyLogButton(true);
       if (kTorBootstrapErrorTopic == aTopic)
       {
-        stopTorBootstrap();
+        await stopTorBootstrap();
         showErrorMessage(aSubject.wrappedJSObject, true);
       }
       return;
@@ -875,7 +875,7 @@ function updateBootstrapProgress(aStatusObj)
 }
 
 
-function readTorSettings()
+async function readTorSettings()
 {
   TorLauncherLogger.log(2, "readTorSettings " +
                             "----------------------------------------------");
@@ -884,8 +884,8 @@ function readTorSettings()
   try
   {
     // TODO: retrieve > 1 key at one time inside initProxySettings() et al.
-    didSucceed = initBridgeSettings() &&
-                 initProxySettings() && initFirewallSettings();
+    didSucceed = await initBridgeSettings() &&
+                 await initProxySettings() && await initFirewallSettings();
   }
   catch (e) { TorLauncherLogger.safelog(4, "Error in readTorSettings: ", e); }
 
@@ -904,9 +904,9 @@ function readTorSettings()
 }
 
 
-function onTorStarted()
+async function onTorStarted()
 {
-  if (readTorSettings())
+  if (await readTorSettings())
   {
     showPanel();
     if (gInitialPanelID)
@@ -943,7 +943,7 @@ function showPanel(aPanelID)
 
 
 // This function assumes that you are starting on the first page.
-function advanceToWizardPanel(aPanelID)
+async function advanceToWizardPanel(aPanelID)
 {
   var wizard = getWizard();
   if (!wizard)
@@ -951,7 +951,7 @@ function advanceToWizardPanel(aPanelID)
 
   if (kWizardProgressPageID == aPanelID)
   {
-    showProgressPanel();
+    await showProgressPanel();
     return;
   }
 
@@ -1383,7 +1383,7 @@ function onWizardReconfig()
 }
 
 
-function onCancel()
+async function onCancel()
 {
   if (gIsWindowScheduledToClose)
     return false;     // Ignore cancel in this case.
@@ -1424,7 +1424,7 @@ function onCancel()
   }
   else if (gIsPostRestartBootstrapNeeded)
   {
-    useSettings();
+    await useSettings();
     return false;
   }
 
@@ -1432,7 +1432,7 @@ function onCancel()
 }
 
 
-function onWizardFinish()
+async function onWizardFinish()
 {
   if (isShowingErrorOverlay())
   {
@@ -1452,11 +1452,11 @@ function onWizardFinish()
     return false;
   }
 
-  return applySettings(false);
+  return await applySettings(false);
 }
 
 
-function onNetworkSettingsFinish()
+async function onNetworkSettingsFinish()
 {
   if (gRestoreAfterHelpPanelID) // Is help open?
   {
@@ -1476,19 +1476,19 @@ function onNetworkSettingsFinish()
     return false;
   }
 
-  return applySettings(false);
+  return await applySettings(false);
 }
 
 
 // When the progress panel is open, cancel stops bootstrapping... unless
 // we are showing an error, in which case the action is "Reconfigure".
-function onProgressCancelOrReconfigure(aWizard)
+async function onProgressCancelOrReconfigure(aWizard)
 {
   let progressContent = document.getElementById("progressContent");
   if (!progressContent ||
       !progressContent.hasAttribute("isShowingReconfigure"))
   {
-    stopTorBootstrap();
+    await stopTorBootstrap();
   }
 
   if (aWizard)
@@ -1597,10 +1597,10 @@ function closeHelp()
 
 
 // Returns true if successful.
-function initProxySettings()
+async function initProxySettings()
 {
   let proxyType, proxyAddrPort, proxyUsername, proxyPassword;
-  let reply = gProtocolSvc.TorGetConfStr(kTorConfKeySocks4Proxy, null);
+  let reply = await gProtocolSvc.TorGetConfStr(kTorConfKeySocks4Proxy, null);
   if (!gProtocolSvc.TorCommandSucceeded(reply))
     return false;
 
@@ -1611,7 +1611,7 @@ function initProxySettings()
   }
   else
   {
-    reply = gProtocolSvc.TorGetConfStr(kTorConfKeySocks5Proxy, null);
+    reply = await gProtocolSvc.TorGetConfStr(kTorConfKeySocks5Proxy, null);
     if (!gProtocolSvc.TorCommandSucceeded(reply))
       return false;
 
@@ -1619,12 +1619,12 @@ function initProxySettings()
     {
       proxyType = "SOCKS5";
       proxyAddrPort = reply.retVal;
-      reply = gProtocolSvc.TorGetConfStr(kTorConfKeySocks5ProxyUsername, null);
+      reply = await gProtocolSvc.TorGetConfStr(kTorConfKeySocks5ProxyUsername, null);
       if (!gProtocolSvc.TorCommandSucceeded(reply))
         return false;
 
       proxyUsername = reply.retVal;
-      reply = gProtocolSvc.TorGetConfStr(kTorConfKeySocks5ProxyPassword, null);
+      reply = await gProtocolSvc.TorGetConfStr(kTorConfKeySocks5ProxyPassword, null);
       if (!gProtocolSvc.TorCommandSucceeded(reply))
         return false;
 
@@ -1632,7 +1632,7 @@ function initProxySettings()
     }
     else
     {
-      reply = gProtocolSvc.TorGetConfStr(kTorConfKeyHTTPSProxy, null);
+      reply = await gProtocolSvc.TorGetConfStr(kTorConfKeyHTTPSProxy, null);
       if (!gProtocolSvc.TorCommandSucceeded(reply))
         return false;
 
@@ -1640,7 +1640,7 @@ function initProxySettings()
       {
         proxyType = "HTTP";
         proxyAddrPort = reply.retVal;
-        reply = gProtocolSvc.TorGetConfStr(
+        reply = await gProtocolSvc.TorGetConfStr(
                                    kTorConfKeyHTTPSProxyAuthenticator, null);
         if (!gProtocolSvc.TorCommandSucceeded(reply))
           return false;
@@ -1678,13 +1678,13 @@ function initProxySettings()
 
 
 // Returns true if successful.
-function initFirewallSettings()
+async function initFirewallSettings()
 {
   if (getWizard())
     return true;  // The wizard does not directly expose firewall settings.
 
   var allowedPorts;
-  var reply = gProtocolSvc.TorGetConfStr(kTorConfKeyReachableAddresses, null);
+  var reply = await gProtocolSvc.TorGetConfStr(kTorConfKeyReachableAddresses, null);
   if (!gProtocolSvc.TorCommandSucceeded(reply))
     return false;
 
@@ -1714,7 +1714,7 @@ function initFirewallSettings()
 
 
 // Returns true if successful.
-function initBridgeSettings()
+async function initBridgeSettings()
 {
   let typeList = TorLauncherUtil.defaultBridgeTypes;
   let canUseDefaultBridges = (typeList && (typeList.length > 0));
@@ -1731,14 +1731,14 @@ function initBridgeSettings()
   {
     showMenuListPlaceholderText(kDefaultBridgeTypeMenuList);
 
-    let reply = gProtocolSvc.TorGetConfBool(kTorConfKeyUseBridges, false);
+    let reply = await gProtocolSvc.TorGetConfBool(kTorConfKeyUseBridges, false);
     if (!gProtocolSvc.TorCommandSucceeded(reply))
       return false;
 
     useBridges = reply.retVal;
 
     // Get the list of configured bridges from tor.
-    let bridgeReply = gProtocolSvc.TorGetConf(kTorConfKeyBridgeList);
+    let bridgeReply = await gProtocolSvc.TorGetConf(kTorConfKeyBridgeList);
     if (!gProtocolSvc.TorCommandSucceeded(bridgeReply))
       return false;
 
@@ -1813,21 +1813,21 @@ function initBridgeSettings()
 
 
 // Returns true if settings were successfully applied.
-function applySettings(aUseDefaults)
+async function applySettings(aUseDefaults)
 {
   TorLauncherLogger.log(2, "applySettings ---------------------" +
                              "----------------------------------------------");
   var didSucceed = false;
   try
   {
-    didSucceed = applyBridgeSettings(aUseDefaults) &&
-                 applyProxySettings(aUseDefaults) &&
-                 applyFirewallSettings(aUseDefaults);
+    didSucceed = await applyBridgeSettings(aUseDefaults) &&
+                 await applyProxySettings(aUseDefaults) &&
+                 await applyFirewallSettings(aUseDefaults);
   }
   catch (e) { TorLauncherLogger.safelog(4, "Error in applySettings: ", e); }
 
   if (didSucceed)
-    useSettings();
+    await useSettings();
 
   TorLauncherLogger.log(2, "applySettings done");
 
@@ -1835,11 +1835,11 @@ function applySettings(aUseDefaults)
 }
 
 
-function useSettings()
+async function useSettings()
 {
   var settings = {};
   settings[kTorConfKeyDisableNetwork] = false;
-  let didApply = setConfAndReportErrors(settings, null);
+  let didApply = await setConfAndReportErrors(settings, null);
   if (!didApply)
     return;
 
@@ -1857,7 +1857,7 @@ function useSettings()
 
   gIsPostRestartBootstrapNeeded = false;
 
-  gProtocolSvc.TorSendCommand("SAVECONF");
+  await gProtocolSvc.TorSendCommand("SAVECONF");
   gTorProcessService.TorClearBootstrapError();
 
   // If bootstrapping has finished or we are not responsible for starting
@@ -1869,11 +1869,11 @@ function useSettings()
     return;
   }
 
-  showProgressPanel();
+  await showProgressPanel();
 }
 
 
-function stopTorBootstrap()
+async function stopTorBootstrap()
 {
   // Tell tor to disable use of the network; this should stop the bootstrap
   // process.
@@ -1883,7 +1883,7 @@ function stopTorBootstrap()
     let settings = {};
     settings["DisableNetwork"] = true;
     let errObj = {};
-    if (!gProtocolSvc.TorSetConfWithReply(settings, errObj))
+    if (!await gProtocolSvc.TorSetConfWithReply(settings, errObj))
       TorLauncherLogger.log(5, kErrorPrefix + errObj.details);
   }
   catch(e)
@@ -1893,7 +1893,7 @@ function stopTorBootstrap()
 }
 
 
-function showProgressPanel()
+async function showProgressPanel()
 {
   let progressContent = document.getElementById("progressContent");
   if (progressContent)
@@ -1932,7 +1932,7 @@ function showProgressPanel()
 
   // Request the most recent bootstrap status info so that a
   // TorBootstrapStatus notification is generated as soon as possible.
-  gProtocolSvc.TorRetrieveBootstrapStatus();
+  await gProtocolSvc.TorRetrieveBootstrapStatus();
 
   // Also start a fail-safe timer to ensure that the progress bar is displayed
   // within 2 seconds in all cases.
@@ -1949,14 +1949,14 @@ function showProgressMeterIfNoError()
 
 
 // Returns true if settings were successfully applied.
-function applyProxySettings(aUseDefaults)
+async function applyProxySettings(aUseDefaults)
 {
   let settings = aUseDefaults ? getDefaultProxySettings()
                               : getAndValidateProxySettings(false);
   if (!settings)
     return false;
 
-  return setConfAndReportErrors(settings, "configureSettings");
+  return await setConfAndReportErrors(settings, "configureSettings");
 }
 
 
@@ -2047,7 +2047,7 @@ function reportValidationError(aStrKey)
 
 
 // Returns true if settings were successfully applied.
-function applyFirewallSettings(aUseDefaults)
+async function applyFirewallSettings(aUseDefaults)
 {
   let settings;
   if (aUseDefaults)
@@ -2060,7 +2060,7 @@ function applyFirewallSettings(aUseDefaults)
   if (!settings)
     return false;
 
-  return setConfAndReportErrors(settings, null);
+  return await setConfAndReportErrors(settings, null);
 }
 
 
@@ -2187,7 +2187,7 @@ function initDefaultBridgeTypeMenu()
 
 
 // Returns true if settings were successfully applied.
-function applyBridgeSettings(aUseDefaults)
+async function applyBridgeSettings(aUseDefaults)
 {
   let settings = (aUseDefaults) ? getDefaultBridgeSettings()
                                 : getAndValidateBridgeSettings();
@@ -2197,7 +2197,7 @@ function applyBridgeSettings(aUseDefaults)
   if (aUseDefaults)
     TorLauncherUtil.setCharPref(kPrefDefaultBridgeType, "");
 
-  return setConfAndReportErrors(settings, "configureSettings");
+  return await setConfAndReportErrors(settings, "configureSettings");
 }
 
 
@@ -2310,10 +2310,10 @@ function parseAndValidateBridges(aStr)
 
 // Returns true if successful.
 // aShowOnErrorPanelID is only used when displaying the wizard.
-function setConfAndReportErrors(aSettingsObj, aShowOnErrorPanelID)
+async function setConfAndReportErrors(aSettingsObj, aShowOnErrorPanelID)
 {
   var errObj = {};
-  var didSucceed = gProtocolSvc.TorSetConfWithReply(aSettingsObj, errObj);
+  var didSucceed = await gProtocolSvc.TorSetConfWithReply(aSettingsObj, errObj);
   if (!didSucceed)
   {
     if (aShowOnErrorPanelID)

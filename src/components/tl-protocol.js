@@ -321,13 +321,13 @@ TorProtocolService.prototype =
   // Perform a GETCONF command.
   // If a fatal error occurs, null is returned.  Otherwise, a reply object is
   // returned.
-  TorGetConf: function(aKey)
+  TorGetConf: async function(aKey)
   {
     if (!aKey || (aKey.length < 1))
       return null;
 
     var cmd = "GETCONF";
-    var reply = this.TorSendCommand(cmd, aKey);
+    var reply = await this.TorSendCommand(cmd, aKey);
     if (!this.TorCommandSucceeded(reply))
       return reply;
 
@@ -336,9 +336,9 @@ TorProtocolService.prototype =
 
   // Returns a reply object.  If the GETCONF command succeeded, reply.retVal
   // is set (if there is no setting for aKey, it is set to aDefault).
-  TorGetConfStr: function(aKey, aDefault)
+  TorGetConfStr: async function(aKey, aDefault)
   {
-    var reply = this.TorGetConf(aKey);
+    var reply = await this.TorGetConf(aKey);
     if (this.TorCommandSucceeded(reply))
     {
       if (reply.lineArray.length > 0)
@@ -352,9 +352,9 @@ TorProtocolService.prototype =
 
   // Returns a reply object.  If the GETCONF command succeeded, reply.retVal
   // is set (if there is no setting for aKey, it is set to aDefault).
-  TorGetConfBool: function(aKey, aDefault)
+  TorGetConfBool: async function(aKey, aDefault)
   {
-    var reply = this.TorGetConf(aKey);
+    var reply = await this.TorGetConf(aKey);
     if (this.TorCommandSucceeded(reply))
     {
       if (reply.lineArray.length > 0)
@@ -374,7 +374,7 @@ TorProtocolService.prototype =
   // passed in the SETCONF command.
   // If a fatal error occurs, null is returned.  Otherwise, a reply object is
   // returned.
-  TorSetConf: function(aSettingsObj)
+  TorSetConf: async function(aSettingsObj)
   {
     if (!aSettingsObj)
       return null;
@@ -418,14 +418,14 @@ TorProtocolService.prototype =
       return null;
     }
 
-    return this.TorSendCommand("SETCONF", cmdArgs);
+    return await this.TorSendCommand("SETCONF", cmdArgs);
   }, // TorSetConf()
 
   // Returns true if successful.
   // Upon failure, aErrorObj.details will be set to a string.
-  TorSetConfWithReply: function(aSettingsObj, aErrorObj)
+  TorSetConfWithReply: async function(aSettingsObj, aErrorObj)
   {
-    var reply = this.TorSetConf(aSettingsObj);
+    var reply = await this.TorSetConf(aSettingsObj);
     var didSucceed = this.TorCommandSucceeded(reply);
     if (!didSucceed)
     {
@@ -448,11 +448,11 @@ TorProtocolService.prototype =
   },
 
   // If successful, sends a "TorBootstrapStatus" notification.
-  TorRetrieveBootstrapStatus: function()
+  TorRetrieveBootstrapStatus: async function()
   {
     var cmd = "GETINFO";
     var key = "status/bootstrap-phase";
-    var reply = this.TorSendCommand(cmd, key);
+    var reply = await this.TorSendCommand(cmd, key);
     if (!this.TorCommandSucceeded(reply))
     {
       TorLauncherLogger.log(4, "TorRetrieveBootstrapStatus: command failed");
@@ -546,7 +546,7 @@ TorProtocolService.prototype =
 
   // Executes a command on the control port.
   // Return a reply object or null if a fatal error occurs.
-  TorSendCommand: function(aCmd, aArgs)
+  TorSendCommand: async function(aCmd, aArgs)
   {
     var reply;
     for (var attempt = 0; !reply && (attempt < 2); ++attempt)
@@ -554,10 +554,10 @@ TorProtocolService.prototype =
       var conn;
       try
       {
-        conn = this._getConnection();
+        conn = await this._getConnection();
         if (conn)
         {
-          reply = this._sendCommand(conn, aCmd, aArgs)
+          reply = await this._sendCommand(conn, aCmd, aArgs)
           if (reply)
             this._returnConnection(conn); // Return for reuse.
           else
@@ -586,12 +586,12 @@ TorProtocolService.prototype =
     this._shutDownEventMonitor();
   },
 
-  TorStartEventMonitor: function()
+  TorStartEventMonitor: async function()
   {
     if (this.mEventMonitorConnection)
       return;
 
-    var conn = this._openAuthenticatedConnection(true);
+    var conn = await this._openAuthenticatedConnection(true);
     if (!conn)
     {
       TorLauncherLogger.log(4,
@@ -601,7 +601,7 @@ TorProtocolService.prototype =
 
     // TODO: optionally monitor INFO and DEBUG log messages.
     var events = "STATUS_CLIENT NOTICE WARN ERR";
-    var reply = this._sendCommand(conn, "SETEVENTS", events);
+    var reply = await this._sendCommand(conn, "SETEVENTS", events);
     if (!this.TorCommandSucceeded(reply))
     {
       TorLauncherLogger.log(4, "SETEVENTS failed");
@@ -669,9 +669,9 @@ TorProtocolService.prototype =
 
   // Return true if a control connection is established (will create a
   // connection if necessary).
-  TorHaveControlConnection: function()
+  TorHaveControlConnection: async function()
   {
-    var conn = this._getConnection();
+    var conn = await this._getConnection();
     this._returnConnection(conn);
     return (conn != null);
   },
@@ -701,7 +701,7 @@ TorProtocolService.prototype =
   //   inStream     // nsIInputStream
   //   binInStream  // nsIBinaryInputStream
   //   binOutStream // nsIBinaryOutputStream
-  _getConnection: function()
+  _getConnection: async function()
   {
     if (this.mControlConnection)
     {
@@ -712,7 +712,7 @@ TorProtocolService.prototype =
       }
     }
     else
-      this.mControlConnection = this._openAuthenticatedConnection(false);
+      this.mControlConnection = await this._openAuthenticatedConnection(true);
 
     if (this.mControlConnection)
       this.mControlConnection.inUse = true;
@@ -726,7 +726,7 @@ TorProtocolService.prototype =
       this.mControlConnection.inUse = false;
   },
 
-  _openAuthenticatedConnection: function(aIsEventConnection)
+  _openAuthenticatedConnection: async function(aIsEventConnection)
   {
     var conn;
     try
@@ -803,7 +803,7 @@ TorProtocolService.prototype =
         if (!kIsHexRE.test(pwdArg))
           pwdArg = '"' + pwdArg + '"';
       }
-      var reply = this._sendCommand(conn, "AUTHENTICATE", pwdArg);
+      var reply = await this._sendCommand(conn, "AUTHENTICATE", pwdArg);
       if (!this.TorCommandSucceeded(reply))
       {
         TorLauncherLogger.log(4, "authenticate failed");
@@ -814,12 +814,12 @@ TorProtocolService.prototype =
           !TorLauncherUtil.shouldOnlyConfigureTor)
       {
         // Try to become the primary controller (TAKEOWNERSHIP).
-        reply = this._sendCommand(conn, "TAKEOWNERSHIP", null);
+        reply = await this._sendCommand(conn, "TAKEOWNERSHIP", null);
         if (!this.TorCommandSucceeded(reply))
           TorLauncherLogger.log(4, "take ownership failed");
         else
         {
-          reply = this._sendCommand(conn, "RESETCONF",
+          reply = await this._sendCommand(conn, "RESETCONF",
                                     "__OwningControllerProcess");
           if (!this.TorCommandSucceeded(reply))
             TorLauncherLogger.log(4, "clear owning controller process failed");
@@ -871,7 +871,7 @@ TorProtocolService.prototype =
     }
   },
 
-  _sendCommand: function(aConn, aCmd, aArgs)
+  _sendCommand: async function(aConn, aCmd, aArgs)
   {
     var reply;
     if (aConn)
@@ -886,7 +886,7 @@ TorProtocolService.prototype =
       this._setSocketTimeout(aConn);
       // TODO: should handle NS_BASE_STREAM_WOULD_BLOCK here.
       aConn.binOutStream.writeBytes(cmd, cmd.length);
-      reply = this._torReadReply(aConn.binInStream);
+      reply = await this._torReadReply(aConn);
       this._clearSocketTimeout(aConn);
     }
 
@@ -894,20 +894,63 @@ TorProtocolService.prototype =
   },
 
   // Returns a reply object.  Blocks until entire reply has been received.
-  _torReadReply: function(aInput)
+  _torReadReply: async function(conn)
   {
     var replyObj = {};
     do
     {
-      var line = this._torReadLine(aInput);
+      var line = await this._torReadLine(conn);
       TorLauncherLogger.safelog(2, "Command response: ", line);
     } while (!this._parseOneReplyLine(line, replyObj));
 
     return (replyObj._parseError) ? null : replyObj;
   },
 
+  _readBytes: async function(numBytes, conn) {
+    var binStream = conn.binInStream;
+    if (numBytes <= binStream.available()) {
+      return binStream.readBytes(numBytes);
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        var curThread = Cc["@mozilla.org/thread-manager;1"].getService()
+                          .currentThread;
+        var asyncInStream = conn.inStream
+          .QueryInterface(Ci.nsIAsyncInputStream);
+
+        var eventReader = // An implementation of nsIInputStreamCallback.
+        {
+          onInputStreamReady: function(aInStream)
+          {
+            if (conn.inStream != aInStream)
+            {
+              return;
+            }
+
+            try
+            {
+              var binStream = conn.binInStream;
+              if (numBytes <= binStream.available()) {
+                resolve(binStream.readBytes(numBytes));
+              } else {
+                asyncInStream.asyncWait(eventReader, 0, 0, curThread);
+              }
+            }
+            catch (e)
+            {
+              reject(e);
+            }
+          }
+        };
+        asyncInStream.asyncWait(eventReader, 0, 0, curThread);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  },
+
   // Returns a string.  Blocks until a line has been received.
-  _torReadLine: function(aInput)
+  _torReadLine: async function(conn)
   {
     var str = "";
     while(true)
@@ -916,7 +959,7 @@ TorProtocolService.prototype =
       {
 // TODO: readBytes() will sometimes hang if the control connection is opened
 // immediately after tor opens its listener socket.  Why?
-        let bytes = aInput.readBytes(1);
+        let bytes = await this._readBytes(1, conn);
         if ('\n' == bytes)
           break;
 
