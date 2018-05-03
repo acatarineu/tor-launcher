@@ -8,6 +8,8 @@ const Ci = Components.interfaces;
 const Cr = Components.results;
 const Cu = Components.utils;
 
+const { TorProxy } = Cu.import('resource://torlauncher/modules/tor-proxy.bundle.js');
+
 // ctypes can be disabled at build time
 try { Cu.import("resource://gre/modules/ctypes.jsm"); } catch(e) {}
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
@@ -137,11 +139,14 @@ TorProcessService.prototype =
         // quitting if the browser did not finish starting up (e.g., when
         // someone presses the Quit button on our Network Settings window
         // during startup).
-        TorLauncherLogger.log(4, "Disconnecting from tor process (pid "
-                                   + this.mTorProcess.pid + ")");
+        TorLauncherLogger.log(4, "Disconnecting from tor worker");
         this.mProtocolSvc.TorCleanupConnection();
 
-        this.mTorProcess = null;
+        try {
+          this.mTorProcess.unload();
+        } finally {
+          this.mTorProcess = null;
+        }
       }
     }
     else if (("process-failed" == aTopic) || ("process-finished" == aTopic))
@@ -338,6 +343,31 @@ TorProcessService.prototype =
   // Private Methods /////////////////////////////////////////////////////////
   _startTor: function(aForceDisableNetwork)
   {
+    function makeFile(path) {
+      return {
+        path
+      };
+    }
+
+    function getTorFile(what, create) {
+      if (what === 'tordatadir') {
+        return makeFile('/Tor');
+      } else if (what === 'torrc') {
+        return makeFile('/Tor/torrc');
+      } else if (what === 'torrc-defaults') {
+        return makeFile('/Tor/torrc-defaults');
+      } else if (what === 'geoip') {
+        return makeFile('/Tor/geoip');
+      } else if (what === 'geoip6') {
+        return makeFile('/Tor/geoip6');
+      }
+      throw new Error(`unknown getTorFile ${what}`);
+    }
+
+    function createWasmWorker(args) {
+      return new TorProxy('resource://torlauncher/modules/worker.bundle.js', args);
+    }
+
     this.mTorProcessStatus = this.kStatusUnknown;
 
     try
@@ -348,24 +378,17 @@ TorProcessService.prototype =
 
       // Get the Tor data directory first so it is created before we try to
       // construct paths to files that will be inside it.
-      var dataDir = TorLauncherUtil.getTorFile("tordatadir", true);
-      var exeFile = TorLauncherUtil.getTorFile("tor", false);
-      var torrcFile = TorLauncherUtil.getTorFile("torrc", true);
+      var dataDir = getTorFile("tordatadir", true);
+      var torrcFile = getTorFile("torrc", true);
       var torrcDefaultsFile =
-                    TorLauncherUtil.getTorFile("torrc-defaults", false);
+                    getTorFile("torrc-defaults", false);
       var hashedPassword = this.mProtocolSvc.TorGetPassword(true);
-      var controlIPCFile = this.mProtocolSvc.TorGetControlIPCFile();
       var controlPort = this.mProtocolSvc.TorGetControlPort();
       var socksPortInfo = this.mProtocolSvc.TorGetSOCKSPortInfo();
 
       var detailsKey;
-      if (!exeFile)
-        detailsKey = "tor_missing";
-      else if (!torrcFile)
-        detailsKey = "torrc_missing";
-      else if (!dataDir)
-        detailsKey = "datadir_missing";
-      else if (!hashedPassword)
+
+      if (!hashedPassword)
         detailsKey = "password_hash_missing";
 
       if (detailsKey)
@@ -379,11 +402,8 @@ TorProcessService.prototype =
       }
 
       // The geoip and geoip6 files are in the same directory as torrc-defaults.
-      var geoipFile = torrcDefaultsFile.clone();
-      geoipFile.leafName = "geoip";
-
-      var geoip6File = torrcDefaultsFile.clone();
-      geoip6File.leafName = "geoip6";
+      var geoipFile = getTorFile('geoip');
+      var geoip6File = getTorFile('geoip6');
 
       var args = [];
       if (torrcDefaultsFile)
@@ -408,9 +428,7 @@ TorProcessService.prototype =
       // to any control ports that the user has defined in their torrc
       // file and (2) it is never written to torrc.
       let controlPortArg;
-      if (controlIPCFile)
-        controlPortArg = this._ipcPortArg(controlIPCFile);
-      else if (controlPort)
+      if (controlPort)
         controlPortArg = "" + controlPort;
       if (controlPortArg)
       {
@@ -442,13 +460,6 @@ TorProcessService.prototype =
         }
       }
 
-      var pid = this._getpid();
-      if (0 != pid)
-      {
-        args.push("__OwningControllerProcess");
-        args.push("" + pid);
-      }
-
       // Start tor with networking disabled if first run or if the
       // "Use Default Bridges of Type" option is turned on.  Networking will
       // be enabled after initial settings are chosen or after the default
@@ -472,41 +483,20 @@ TorProcessService.prototype =
         args.push("1");
       }
 
-      // Set an environment variable that points to the Tor data directory.
-      // This is used by meek-client-torbrowser to find the location for
-      // the meek browser profile.
-      let env = Cc["@mozilla.org/process/environment;1"]
-                  .getService(Ci.nsIEnvironment);
-      env.set("TOR_BROWSER_TOR_DATA_DIR", dataDir.path);
-
-      // On Windows, prepend the Tor program directory to PATH.  This is
-      // needed so that pluggable transports can find OpenSSL DLLs, etc.
-      // See https://trac.torproject.org/projects/tor/ticket/10845
-      if (TorLauncherUtil.isWindows)
-      {
-        var path = exeFile.parent.path;
-        if (env.exists("PATH"))
-          path += ";" + env.get("PATH");
-        env.set("PATH", path);
-      }
-
       this.mTorProcessStatus = this.kStatusStarting;
 
-      var p = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
-      p.init(exeFile);
-
-      TorLauncherLogger.log(2, "Starting " + exeFile.path);
+      TorLauncherLogger.log(2, "Starting Tor wasm worker");
       for (var i = 0; i < args.length; ++i)
         TorLauncherLogger.log(2, "  " + args[i]);
 
-      p.runwAsync(args, args.length, this, false);
-      this.mTorProcess = p;
+      this.mTorProcess = createWasmWorker(args);
+      this.mTorProcess.init();
       this.mTorProcessStartTime = Date.now();
     }
     catch (e)
     {
       this.mTorProcessStatus = this.kStatusExited;
-      var s = TorLauncherUtil.getLocalizedString("tor_failed_to_start");
+      var s = e.message + typeof TorProxy || TorLauncherUtil.getLocalizedString("tor_failed_to_start");
       this._notifyUserOfError(s, null, this.kTorProcessDidNotStartTopic);
       TorLauncherLogger.safelog(4, "_startTor error: ", e);
     }

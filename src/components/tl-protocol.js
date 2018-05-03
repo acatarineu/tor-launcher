@@ -51,8 +51,7 @@ function TorProtocolService()
       if (env.exists("TOR_CONTROL_PORT"))
         this.mControlPort = parseInt(env.get("TOR_CONTROL_PORT"), 10);
 
-      let useIPC = !isWindows && TorLauncherUtil.getBoolPref(
-                      "extensions.torlauncher.control_port_use_ipc", true);
+      let useIPC = false;
       if (!this.mControlHost && !this.mControlPort && useIPC)
         this.mControlIPCFile = TorLauncherUtil.getTorFile("control_ipc", false);
       else
@@ -130,34 +129,34 @@ function TorProtocolService()
     //    present; if not, the values in network.proxy.socks and
     //    network.proxy.socks_port are used without modification.
 
-    let useIPC;
+    let useIPC = false;
     this.mSOCKSPortInfo = { ipcFile: undefined, host: undefined, port: 0 };
-    if (!isWindows && env.exists("TOR_SOCKS_IPC_PATH"))
-    {
-      let ipcPath = env.get("TOR_SOCKS_IPC_PATH");
-      this.mSOCKSPortInfo.ipcFile = new FileUtils.File(ipcPath);
-      useIPC = true;
-    }
-    else
-    {
-      // Check for TCP host and port environment variables.
-      if (env.exists("TOR_SOCKS_HOST"))
-      {
-        this.mSOCKSPortInfo.host = env.get("TOR_SOCKS_HOST");
-        useIPC = false;
-      }
-      if (env.exists("TOR_SOCKS_PORT"))
-      {
-        this.mSOCKSPortInfo.port = parseInt(env.get("TOR_SOCKS_PORT"), 10);
-        useIPC = false;
-      }
-    }
+    // if (!isWindows && env.exists("TOR_SOCKS_IPC_PATH"))
+    // {
+    //   let ipcPath = env.get("TOR_SOCKS_IPC_PATH");
+    //   this.mSOCKSPortInfo.ipcFile = new FileUtils.File(ipcPath);
+    //   useIPC = true;
+    // }
+    // else
+    // {
+    //   // Check for TCP host and port environment variables.
+    //   if (env.exists("TOR_SOCKS_HOST"))
+    //   {
+    //     this.mSOCKSPortInfo.host = env.get("TOR_SOCKS_HOST");
+    //     useIPC = false;
+    //   }
+    //   if (env.exists("TOR_SOCKS_PORT"))
+    //   {
+    //     this.mSOCKSPortInfo.port = parseInt(env.get("TOR_SOCKS_PORT"), 10);
+    //     useIPC = false;
+    //   }
+    // }
 
-    if (useIPC === undefined)
-    {
-      useIPC = !isWindows && TorLauncherUtil.getBoolPref(
-                       "extensions.torlauncher.socks_port_use_ipc", true);
-    }
+    // if (useIPC === undefined)
+    // {
+    //   useIPC = !isWindows && TorLauncherUtil.getBoolPref(
+    //                    "extensions.torlauncher.socks_port_use_ipc", true);
+    // }
 
     // Fill in missing SOCKS info from prefs.
     if (useIPC)
