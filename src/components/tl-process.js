@@ -722,7 +722,7 @@ TorProcessService.prototype =
 
   _openLocalePicker: function()
   {
-    const kLocalePickerURL = "chrome://torlauncher/content/localePicker.xul";
+    const kLocalePickerURL = "chrome://torlauncher/content/localePicker.xhtml";
 
     var wwSvc = Cc["@mozilla.org/embedcomp/window-watcher;1"]
                   .getService(Ci.nsIWindowWatcher);
@@ -743,8 +743,8 @@ TorProcessService.prototype =
       return;
     }
 
-    const kSettingsURL = "chrome://torlauncher/content/network-settings.xul";
-    const kWizardURL = "chrome://torlauncher/content/network-settings-wizard.xul";
+    const kSettingsURL = "chrome://torlauncher/content/network-settings.xhtml";
+    const kWizardURL = "chrome://torlauncher/content/network-settings-wizard.xhtml";
 
     var wwSvc = Cc["@mozilla.org/embedcomp/window-watcher;1"]
                   .getService(Ci.nsIWindowWatcher);

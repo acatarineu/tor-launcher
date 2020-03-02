@@ -765,7 +765,7 @@ TorProtocolService.prototype =
       {
         TorLauncherLogger.log(2, "Opening control connection to " +
                                  this.mControlHost + ":" + this.mControlPort);
-        socket = sts.createTransport(null, 0, this.mControlHost,
+        socket = sts.createTransport([], this.mControlHost,
                                      this.mControlPort, null);
       }
 
