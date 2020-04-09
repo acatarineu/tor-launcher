@@ -40,11 +40,11 @@ var proxySettings = `
             <label value="&torsettings.useProxy.address;" control="proxyAddr"
                    class="rightAlign"/>
             <hbox align="center">
-              <textbox id="proxyAddr" size="20" flex="1"
+              <html:input id="proxyAddr" size="20" style="-moz-box-flex: 1;"
                        placeholder="&torsettings.useProxy.address.placeholder;"/>
               <separator orient="vertical"/>
               <label value="&torsettings.useProxy.port;" control="proxyPort"/>
-              <textbox id="proxyPort" size="4"/>
+              <html:input id="proxyPort" size="4"/>
             </hbox>
           </row>
           <row align="center">
@@ -52,13 +52,13 @@ var proxySettings = `
                    value="&torsettings.useProxy.username;"
                    control="proxyUsername" class="rightAlign"/>
             <hbox align="center">
-              <textbox id="proxyUsername" size="14" flex="1"
+              <html:input id="proxyUsername" size="14" style="-moz-box-flex: 1;"
                        placeholder="&torsettings.optional;"/>
               <separator orient="vertical"/>
               <label id="proxyPasswordLabel"
                      value="&torsettings.useProxy.password;"
                      control="proxyPassword"/>
-              <textbox id="proxyPassword" size="14" type="password"
+              <html:input id="proxyPassword" size="14" type="password"
                        placeholder="&torsettings.optional;"/>
             </hbox>
           </row>
@@ -175,7 +175,7 @@ var bridgeDBRequestOverlayContent = `
       <hbox>
         <spacer id="bridgeDBReloadSpacer"/>
         <spacer flex="1"/>
-        <textbox id="bridgeDBCaptchaSolution" size="35"
+        <html:input id="bridgeDBCaptchaSolution" size="35"
           placeholder="&torsettings.useBridges.captchaSolution.placeholder;"
           oninput="onCaptchaSolutionChange()"/>
         <spacer flex="1"/>
