@@ -307,7 +307,7 @@ html|textarea {
 .os-windows label,
 .os-windows description,
 .os-windows html|textarea,
-.os-windows textbox
+.os-windows html|input
 {
   font-size: 120% !important;
 }
