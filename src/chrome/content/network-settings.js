@@ -2489,7 +2489,7 @@ function setElemValue(aID, aValue)
         toggleElemUI(elem);
         break;
       case "html:textarea":
-      case "textbox":
+      case "html:input":
         if (Array.isArray(aValue))
         {
           val = "";
@@ -2555,7 +2555,7 @@ function getElemValue(aID, aDefaultValue)
         rv = elem.selected;
         break;
       case "html:textarea":
-      case "textbox":
+      case "html:input":
       case "menulist":
       case "richlistbox":
         rv = elem.value;
