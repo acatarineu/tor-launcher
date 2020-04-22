@@ -1,4 +1,4 @@
-// Copyright (c) 2019, The Tor Project, Inc.
+// Copyright (c) 2020, The Tor Project, Inc.
 // See LICENSE for licensing information.
 //
 // vim: set sw=2 sts=2 ts=8 et syntax=javascript:
@@ -20,7 +20,7 @@ XPCOMUtils.defineLazyModuleGetter(this, "TorLauncherBridgeDB",
                           "resource://torlauncher/modules/tl-bridgedb.jsm");
 
 const kPrefPromptForLocale = "extensions.torlauncher.prompt_for_locale";
-const kPrefLocale = "general.useragent.locale";
+const kPrefLocale = "intl.locale.requested";
 const kPrefMatchOSLocale = "intl.locale.matchOS";
 
 // The recommended type is listed first in the dropdown menu.
@@ -138,7 +138,7 @@ function initDialogCommon()
   let wizardElem = getWizard();
   let haveWizard = (wizardElem != null);
 
-  let cancelBtn = document.documentElement.getButton("cancel");
+  let cancelBtn = getButton("cancel");
   if (cancelBtn)
   {
     gCancelLabelStr = cancelBtn.label;
@@ -151,6 +151,18 @@ function initDialogCommon()
 
   if (haveWizard)
   {
+    // Apply styles to elements within the wizard element's shadow DOM.
+    let wizardPageBox = wizardElem.shadowRoot.querySelector(".wizard-page-box");
+    if (wizardPageBox)
+    {
+      wizardPageBox.style.padding = "0px";
+      wizardPageBox.style.margin = "14px 20px 18px 20px";
+    }
+
+    let wizardHeader = wizardElem.shadowRoot.querySelector(".wizard-header");
+    if (wizardHeader)
+      wizardHeader.style.display = "none";
+
     // Hide the Tor Browser logo and associated separator element if the
     // TOR_HIDE_BROWSER_LOGO environment variable is set.
     let env = Cc["@mozilla.org/process/environment;1"]
@@ -291,16 +303,16 @@ function initDialog()
     });
 
     // Relabel the accept button to be "Connect"
-    let okBtn = document.documentElement.getButton("accept");
+    let okBtn = getButton("accept");
     if (okBtn)
       okBtn.label = TorLauncherUtil.getLocalizedString("connect");
 
     // Set "Copy Tor Log" label and move it after the Quit (cancel) button.
-    let copyLogBtn = document.documentElement.getButton("extra2");
+    let copyLogBtn = getButton("extra2");
     if (copyLogBtn)
     {
       copyLogBtn.label = wizardElem.getAttribute("buttonlabelextra2");
-      let cancelBtn = document.documentElement.getButton("cancel");
+      let cancelBtn = getButton("cancel");
       if (cancelBtn && TorLauncherUtil.isMac)
         cancelBtn.parentNode.insertBefore(copyLogBtn, cancelBtn.nextSibling);
     }
@@ -312,7 +324,7 @@ function initDialog()
     }
 
     // Use "Connect" as the finish button label (on the last wizard page).
-    let finishBtn = document.documentElement.getButton("finish");
+    let finishBtn = getButton("finish");
     if (finishBtn)
     {
       finishBtn.label = TorLauncherUtil.getLocalizedString("connect");
@@ -320,7 +332,7 @@ function initDialog()
     }
 
     // Set Discard Settings back button label to match the wizard Back button.
-    let wizardBackBtn = document.documentElement.getButton("back");
+    let wizardBackBtn = getButton("back");
     let backBtn = document.getElementById("discardSettingsGoBack");
     if (wizardBackBtn && backBtn)
       backBtn.label = wizardBackBtn.label;
@@ -374,10 +386,17 @@ function initLocaleDialog()
 
   // Replace the finish button's label ("Done") with the next button's
   // label ("Next" or "Continue").
-  let nextBtn = document.documentElement.getButton("next");
-  let doneBtn = document.documentElement.getButton("finish");
+  let nextBtn = getButton("next");
+  let doneBtn = getButton("finish");
   if (nextBtn && doneBtn)
     doneBtn.label = nextBtn.label;
+
+  // The locale picker does not use the "Back" and "Next" buttons; hide them.
+  let backBtn = getButton("back");
+  if (backBtn)
+    backBtn.style.display = "none";
+  if (nextBtn)
+    nextBtn.style.display = "none";
 
   let { AddonManager } = Cu.import("resource://gre/modules/AddonManager.jsm");
   let addonsPromise = AddonManager.getAddonsByTypes(["locale"]);
@@ -432,13 +451,9 @@ function populateLocaleList(aLangPackAddons)
   };
 
   // Retrieve the current locale so we can select it within the list by default.
-  let curLocale;
-  try
-  {
-    let chromeRegSvc = Cc["@mozilla.org/chrome/chrome-registry;1"]
-                         .getService(Ci.nsIXULChromeRegistry);
-    curLocale = chromeRegSvc.getSelectedLocale("global").toLowerCase();
-  } catch (e) {}
+  let curLocale = Services.locale.requestedLocale;
+  if (curLocale)
+    curLocale = curLocale.toLowerCase();
 
   // Build a list of language info objects (language code plus friendly name).
   let foundCurLocale = false;
@@ -485,9 +500,9 @@ function populateLocaleList(aLangPackAddons)
   let localeList = document.getElementById(kLocaleList);
   for (let infoObj of langInfo)
   {
-    let listItem = document.createElement("richlistitem");
+    let listItem = document.createXULElement("richlistitem");
     listItem.setAttribute("value", infoObj.langCode);
-    let label = document.createElement("label");
+    let label = document.createXULElement("label");
     label.value = infoObj.langName;
     listItem.appendChild(label);
     localeList.appendChild(listItem);
@@ -517,7 +532,7 @@ function maxWidthOfContent()
   for (let i = 0; i < buttons.length; ++i)
     showOrHideButton(buttons[i], true, false);
 
-  let btn = document.documentElement.getButton("cancel");
+  let btn = getButton("cancel");
   let btnContainer = btn.parentElement;
 
   const kWarningIconWidth = 20; // skin/warning.png is 16 plus some margin
@@ -991,7 +1006,7 @@ function updateBootstrapProgress(aStatusObj)
     // visibility=hidden instead of XUL hidden=true so that the "For
     // Assistance" text does not move.
     let btnID = getWizard() ? "finish" : "cancel";
-    let btn = document.documentElement.getButton(btnID);
+    let btn = getButton(btnID);
     if (btn)
       btn.style.visibility = "hidden";
     window.setTimeout(function() { close(); }, 250);
@@ -1248,7 +1263,7 @@ function isShowingErrorOverlay()
 
 function showCopyLogButton(aHaveErrorOrWarning)
 {
-  let copyLogBtn = document.documentElement.getButton("extra2");
+  let copyLogBtn = getButton("extra2");
   if (copyLogBtn)
   {
     let haveWizard = (getWizard() != null);
@@ -1272,7 +1287,7 @@ function showCopyLogButton(aHaveErrorOrWarning)
 
 function restoreCopyLogVisibility()
 {
-  let copyLogBtn = document.documentElement.getButton("extra2");
+  let copyLogBtn = getButton("extra2");
   if (!copyLogBtn)
     return;
 
@@ -1288,14 +1303,10 @@ function restoreCopyLogVisibility()
 // Network Settings window.
 function showOrHideDialogButtons(aShow)
 {
-  let buttonContainer = document.getAnonymousElementByAttribute(
-                             document.documentElement, "anonid", "buttons");
-  if (!buttonContainer)
-  {
-    // The wizard uses "Buttons" (capital 'B').
-    buttonContainer = document.getAnonymousElementByAttribute(
-                             document.documentElement, "anonid", "Buttons");
-  }
+  let wizard = getWizard();
+  let buttonContainer = wizard
+                          ? wizard.shadowRoot.querySelector(".wizard-buttons")
+                          : document.querySelector(".dialog-button-box");
 
   if (buttonContainer)
   {
@@ -1328,7 +1339,7 @@ function setButtonAttr(aID, aAttr, aValue)
   if (!aID || !aAttr)
     return null;
 
-  let btn = document.documentElement.getButton(aID);  // dialog buttons
+  let btn = getButton(aID);  // dialog buttons
   if (!btn)
     btn = document.getElementById(aID);               // other buttons
   if (btn)
@@ -1428,7 +1439,7 @@ function showMenuListPlaceholderText(aElemID)
 
 function overrideButtonLabel(aID, aLabel)
 {
-  let btn = document.documentElement.getButton(aID);
+  let btn = getButton(aID);
   if (btn)
   {
     btn.setAttribute("origLabel", btn.label);
@@ -1446,7 +1457,7 @@ function overrideButtonLabelWithKey(aID, aLabelKey)
 
 function restoreButtonLabel(aID)
 {
-  var btn = document.documentElement.getButton(aID);
+  var btn = getButton(aID);
   if (btn)
   {
     var oldLabel = btn.getAttribute("origLabel");
@@ -1641,7 +1652,7 @@ function onCopyLog()
   chSvc.copyString(gProtocolSvc.TorGetLog(countObj));
 
   // Display a feedback popup that fades away after a few seconds.
-  let copyLogBtn = document.documentElement.getButton("extra2");
+  let copyLogBtn = getButton("extra2");
   let panel = document.getElementById(kCopyLogFeedbackPanel);
   if (copyLogBtn && panel)
   {
@@ -2567,6 +2578,13 @@ function getElemValue(aID, aDefaultValue)
     rv = rv.trim();
 
   return rv;
+}
+
+
+function getButton(aButtonName)
+{
+  let dialogOrWizard = document.documentElement.firstChild;
+  return dialogOrWizard.getButton(aButtonName);
 }
 
 
