@@ -18,6 +18,11 @@
         onload="initDialog();"
         onunload="deinitDialog();">
 
+<!-- Work around a fluent bug in the wizard code (see Mozilla bug 1625938) -->
+<linkset>
+  <html:link rel="localization" href="toolkit/global/wizard.ftl"/>
+</linkset>
+
 <wizard id="TorNetworkSettings"
         defaulttitle="&torsettings.wizard.title.default;"
         buttonlabelextra2="&torsettings.copyLog;">

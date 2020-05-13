@@ -2583,7 +2583,7 @@ function getElemValue(aID, aDefaultValue)
 
 function getButton(aButtonName)
 {
-  let dialogOrWizard = document.documentElement.firstChild;
+  let dialogOrWizard = document.querySelector("wizard");
   return dialogOrWizard.getButton(aButtonName);
 }
 

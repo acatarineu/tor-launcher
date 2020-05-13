@@ -12,11 +12,17 @@
 <!DOCTYPE window SYSTEM "chrome://torlauncher/locale/network-settings.dtd">
 
 <window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         torwizard="true"
         title="&torlauncher.localePicker.title;"
         windowtype="TorLauncher:LocalePicker"
         persist="screenX screenY"
         onload="initLocaleDialog();">
+
+<!-- Work around a fluent bug in the wizard code (see Mozilla bug 1625938) -->
+<linkset>
+  <html:link rel="localization" href="toolkit/global/wizard.ftl"/>
+</linkset>
 
 <wizard id="TorLauncherLocalePicker">
   <script type="application/x-javascript"
