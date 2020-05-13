@@ -100,6 +100,22 @@ TorProcessService.prototype =
 
     if ("profile-after-change" == aTopic)
     {
+      // Initialize the DNS service here (as early as possible). This
+      // avoids a deadlock that can occur inside TorProtocolService's
+      // _openAuthenticatedConnection() function. What happens in the
+      // deadlock case is that a Necko socket thread tries to dispatch
+      // initialization of the DNS service to the main thread while the
+      // main thread is blocked in a writeBytes() call inside the
+      // _sendCommand() function. The ultimate solution is to change
+      // our control port socket to use asynchronous I/O.
+      // References:
+      //   netwerk/dns/nsDNSService2.cpp nsDNSService::GetSingleton()
+      //   https://bugzilla.mozilla.org/show_bug.cgi?id=1625151 (the
+      //     fix for this bug introduced the deadlock because it changed
+      //     DNS service initialization to occur on the main thread).
+      const dns = Cc["@mozilla.org/network/dns-service;1"]
+                    .getService(Ci.nsIDNSService);
+
       this.mObsSvc.addObserver(this, "quit-application-granted", false);
       this.mObsSvc.addObserver(this, kOpenNetworkSettingsTopic, false);
       this.mObsSvc.addObserver(this, kUserQuitTopic, false);
